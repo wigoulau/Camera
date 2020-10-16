@@ -1,6 +1,7 @@
 package com.example.camera;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -8,6 +9,7 @@ import androidx.core.content.ContextCompat;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.app.VoiceInteractor;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -15,12 +17,16 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private final String TAG = "MainActivity";
     private final int mRequestCode = 100;//权限请求码
 
     @Override
@@ -28,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         checkRequiredPermissions();
+        initCamera();
     }
 
     private void checkRequiredPermissions() {
@@ -103,4 +110,38 @@ public class MainActivity extends AppCompatActivity {
     private void cancelPermissionDialog() {
         mPermissionDialog.cancel();
     }
+
+    @RequiresApi(21)
+    private void initCamera() {
+        Button btnCamera = this.findViewById(R.id.btnCamera);
+        btnCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, CameraActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                MainActivity.this.startActivity(intent);
+            }
+        });
+
+        android.hardware.camera2.CameraManager cameraManager = (android.hardware.camera2.CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
+        if (cameraManager == null) {
+            Log.d(TAG, "get camera service fail");
+            return;
+        }
+
+        try {
+            String[] cameraIdList = cameraManager.getCameraIdList();
+            for (String cameraId: cameraIdList) {
+                Log.d(TAG, "cameraId:" + cameraId);
+
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.e(TAG, "getCameraIdList fail:"+e.getMessage());
+        }
+
+    }
+
+
 }
