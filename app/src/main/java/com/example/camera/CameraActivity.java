@@ -2,20 +2,28 @@ package com.example.camera;
 
 import android.graphics.ImageFormat;
 import android.hardware.Camera;
+import android.media.CamcorderProfile;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Environment;
+import android.os.Handler;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.os.Message;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class CameraActivity extends AppCompatActivity implements SurfaceHolder.Callback {
 
@@ -24,12 +32,22 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
     private SurfaceView mCameraSurface;
     private SurfaceHolder mHolder;
     private Button btnStartRecord;
+    private Button btnChangeModule;
+    private TextView mRecordVideoTime;
+    private ImageView mRecordActBack;
+    private ImageView mRecordVideoTip;
 
     private static final int MEDIA_TYPE_IMAGE = 1;
     private static final int MEDIA_TYPE_VIDEO = 2;
     private int mRecordType;
 
+    private boolean mIsRecording;
+    private int mStartTime = 0;
+    private Timer mTimer;
+    private Handler mHandler;
+
     private Camera mCamera = null;
+    private MediaRecorder mMediaRecorder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,9 +59,42 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
         mHolder.addCallback(CameraActivity.this);
 
         mRecordType = MEDIA_TYPE_IMAGE;
+        mIsRecording = false;
         btnStartRecord = findViewById(R.id.btn_start_recording);
         startRecordLinten();
+        btnChangeModule = findViewById(R.id.btn_change_module);
+        changeModuleListen();
+        mRecordVideoTime = findViewById(R.id.record_video_time);
+        mRecordActBack = findViewById(R.id.record_act_back);
+        mRecordVideoTip = findViewById(R.id.record_video_tip);
 
+        mHandler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                super.handleMessage(msg);
+                int minute1 = mStartTime / 60;
+                int second1 = mStartTime % 60;
+                String minuteStr1 = null;
+                String secondStr1 = null;
+                if (minute1 < 10) {
+                    minuteStr1 = "0" + minute1;
+                } else {
+                    minuteStr1 = String.valueOf(minuteStr1);
+                }
+                if (second1 < 10) {
+                    secondStr1 = "0" + second1;
+                } else {
+                    secondStr1 = String.valueOf(second1);
+                }
+                mRecordVideoTime.setText(minuteStr1 + ":" + secondStr1);
+
+                if (mRecordVideoTip.getVisibility() == View.VISIBLE) {
+                    mRecordVideoTip.setVisibility(View.GONE);
+                } else {
+                    mRecordVideoTip.setVisibility(View.VISIBLE);
+                }
+            }
+        };
     }
 
     // camera preview
@@ -67,6 +118,8 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
         } catch (Exception e) {
             finish();
         }
+
+        setCaptureModule(MEDIA_TYPE_VIDEO);
     }
 
     @Override
@@ -132,11 +185,6 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
                     case MEDIA_TYPE_IMAGE:
                         if (mCamera != null) {
                             try {
-                                // set parameters
-                                Camera.Parameters params = mCamera.getParameters();
-                                params.setPictureFormat(ImageFormat.JPEG);
-                                params.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
-                                mCamera.setParameters(params);
                                 // make photo
                                 mCamera.takePicture(null, null, mPictureCallback);
                             } catch (Exception e) {
@@ -146,6 +194,11 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
                         }
                         break;
                     case MEDIA_TYPE_VIDEO:
+                        if (mIsRecording) {
+                            stopRecord();
+                        } else {
+                            startRecord();
+                        }
                         break;
                 }
             }
@@ -171,5 +224,113 @@ public class CameraActivity extends AppCompatActivity implements SurfaceHolder.C
             camera.startPreview();
         }
     };
+
+    public void changeModuleListen() {
+        btnChangeModule.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (mIsRecording)
+                    return;
+                switch (mRecordType) {
+                    case MEDIA_TYPE_IMAGE:
+                        setCaptureModule(MEDIA_TYPE_VIDEO);
+                        break;
+                    case MEDIA_TYPE_VIDEO:
+                        setCaptureModule(MEDIA_TYPE_IMAGE);
+                        break;
+                }
+            }
+        });
+    }
+
+    public void setCaptureModule(int type) {
+        switch (type) {
+            case MEDIA_TYPE_VIDEO:
+                mRecordType = MEDIA_TYPE_VIDEO;
+                btnStartRecord.setBackgroundResource(R.drawable.recording_act_vedio_start);
+                btnChangeModule.setBackgroundResource(R.drawable.change_module_video);
+                Toast.makeText(CameraActivity.this, "录像模式", Toast.LENGTH_SHORT).show();
+                mRecordVideoTip.setVisibility(View.VISIBLE);
+                mRecordVideoTime.setVisibility(View.VISIBLE);
+                break;
+            case MEDIA_TYPE_IMAGE:
+                mRecordType = MEDIA_TYPE_IMAGE;
+                btnStartRecord.setBackgroundResource(R.drawable.recording_act_photo_start);
+                btnChangeModule.setBackgroundResource(R.drawable.change_module_photo);
+                Toast.makeText(CameraActivity.this, "拍照模式", Toast.LENGTH_SHORT).show();
+                mRecordVideoTip.setVisibility(View.GONE);
+                mRecordVideoTime.setVisibility(View.GONE);
+                break;
+        }
+        try {
+            if (mCamera != null) {
+                // set parameters
+                Camera.Parameters params = mCamera.getParameters();
+                params.setPictureFormat(ImageFormat.JPEG);
+                if (mRecordType == MEDIA_TYPE_VIDEO)
+                    params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
+                else
+                    params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+                mCamera.setParameters(params);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean prepareVideoRecorder(){
+        mMediaRecorder = new MediaRecorder();
+        mCamera.unlock();
+        try {
+            mMediaRecorder.setCamera(mCamera);
+            mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
+            mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+            mMediaRecorder.setProfile(CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH));
+            mMediaRecorder.setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString());
+            mMediaRecorder.setPreviewDisplay(mHolder.getSurface());
+            mMediaRecorder.prepare();
+        } catch (Exception e) {
+            mMediaRecorder.release();
+            mCamera.lock();
+            return false;
+        }
+        return true;
+    }
+
+    private void startRecord() {
+        if (prepareVideoRecorder()) {
+            mMediaRecorder.start();
+
+            mIsRecording = true;
+            Toast.makeText(CameraActivity.this, "开始录像", Toast.LENGTH_SHORT).show();
+            btnStartRecord.setBackgroundResource(R.drawable.recording_act_vedio_stop);
+            mStartTime = 0;
+            mTimer = new Timer();
+            mTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    mStartTime++;
+                    mHandler.sendEmptyMessage(0);
+                }
+            }, 0, 1000);
+        } else {
+            mMediaRecorder.release();
+            mCamera.lock();
+        }
+    }
+
+    private void stopRecord() {
+        mMediaRecorder.stop();
+        mMediaRecorder.reset();
+        mMediaRecorder.release();
+        mCamera.lock();
+
+        mIsRecording = false;
+        btnStartRecord.setBackgroundResource(R.drawable.recording_act_vedio_start);
+        mTimer.cancel();
+
+        Toast.makeText(CameraActivity.this, "录像已保存", Toast.LENGTH_SHORT).show();
+    }
+
 
 }

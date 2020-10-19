@@ -59,7 +59,7 @@
         android:layout_marginTop="10dp"
         android:gravity="center_vertical" >
 
-        <View
+        <ImageView
             android:id="@+id/record_video_tip"
             android:layout_width="15dp"
             android:layout_height="15dp"

@@ -40,7 +40,8 @@ public class MainActivity extends AppCompatActivity {
     private void checkRequiredPermissions() {
         String[] permissions = new String[] {
                 Manifest.permission.CAMERA,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                Manifest.permission.RECORD_AUDIO
         };
         List<String> mPermissionList = new ArrayList<>();
 
