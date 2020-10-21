@@ -124,6 +124,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.btnCameraPreview).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, CameraPreviewActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                MainActivity.this.startActivity(intent);
+            }
+        });
+
         android.hardware.camera2.CameraManager cameraManager = (android.hardware.camera2.CameraManager) this.getSystemService(Context.CAMERA_SERVICE);
         if (cameraManager == null) {
             Log.d(TAG, "get camera service fail");
